@@ -1,48 +1,144 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styles from "./App.module.scss";
 
-import Button, { example } from "./components/Button/Button";
-// import {example} from './components/Button/Button'; //named import
-import SearchBar from "./components/SearchBar/SearchBar"; //default import
-// import Counter from "./components/Counter";
+import Button from "./components/Button/Button";
+import SearchBar from "./components/SearchBar";
+import Counter from "./components/Counter";
 
-// import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCoffee, faCheckSquare } from "@fortawesome/free-solid-svg-icons";
+import { firestore } from "./firebase.js";
+
+import {
+  faCoffee,
+  faCheckSquare,
+  faDog
+} from "@fortawesome/free-solid-svg-icons";
 import { library } from "@fortawesome/fontawesome-svg-core";
 
-library.add(faCoffee, faCheckSquare);
+library.add(faCoffee, faCheckSquare, faDog);
 
 const App = () => {
-  const [currentNum, updateNum] = useState(100);
+  const [todoItems, setTodoItems] = useState([]);
 
-  const testFunc = inputValue => {
-    console.log(inputValue);
+  const [newItem, setNewItem] = useState("");
+
+  useEffect(() => {
+    // first load up page...
+    fetchTodos();
+  }, []);
+
+  const fetchTodos = () => {
+    firestore
+      .collection("todo-items")
+      .doc("item-list")
+      .get()
+      .then(doc => {
+        const retrievedItems = doc.data().items;
+        setTodoItems(retrievedItems);
+      })
+      .catch(err => {
+        console.log(err);
+      });
+  };
+
+  const addToDb = () => {
+    const newItems = [...todoItems, newItem.toLowerCase()];
+
+    const newDoc = {
+      items: newItems
+    };
+
+    firestore
+      .collection("todo-items")
+      .doc("item-list")
+      .set(newDoc)
+      .then(() => {
+        fetchTodos();
+      })
+      .catch(err => {
+        console.log(err);
+      });
+  };
+
+  const deleteFromDb = item => {
+    const newArray = [...todoItems];
+    const position = newArray.indexOf(item);
+    newArray.splice(position, 1);
+
+    const newDoc = {
+      items: newArray
+    };
+
+    firestore
+      .collection("todo-items")
+      .doc("item-list")
+      .set(newDoc)
+      .then(() => {
+        fetchTodos();
+      })
+      .catch(err => {
+        console.log(err);
+      });
+  };
+
+  const getItemJsx = () => {
+    return todoItems.map(item => (
+      <>
+        <p>{item}</p>
+        <button onClick={() => deleteFromDb(item)}>Delete</button>
+      </>
+    ));
+  };
+
+  const addNewDoc = () => {
+    const userId = "barry365";
+
+    const newDoc = {
+      name: "barry",
+      age: 24,
+      isTechie: false
+    };
+
+    firestore
+      .collection("users")
+      // .doc("bary365")
+      // .set(newDoc)
+      .doc()
+      .set(newDoc)
+      .then(() => {
+        fetchTodos();
+      })
+      .catch(err => {
+        console.log(err);
+      });
+  };
+
+  const deleteDoc = () => {
+    const userId = "barry365";
+
+    firestore
+      .collection("users")
+      .doc(userId)
+      .delete()
+      .then(() => {
+        fetchTodos();
+      })
+      .catch(err => {
+        console.log(err);
+      });
   };
 
   return (
     <>
-      <h1>{currentNum}</h1>
-      <SearchBar
-        placeholderText={"input number"}
-        handleInput={event => updateNum(Number(event))}
-      />
-      <Button
-        btnText={"Increment"}
-        handleClick={() => updateNum(currentNum + 1)}
-      />
-      <Button
-        btnText={"Decrement"}
-        handleClick={() => updateNum(currentNum - 1)}
-      />
+      <button onClick={addNewDoc}>Add new Doc</button>
+      <button onClick={deleteDoc}>Delete new Doc</button>
 
-      <Button
-        btnText={"Multiply times 2"}
-        handleClick={() => updateNum(currentNum * 2)}
+      <input
+        type="text"
+        placeholder="Todo item..."
+        onInput={event => setNewItem(event.target.value)}
       />
-      <Button
-        btnText={"Divide by 2"}
-        handleClick={() => updateNum(currentNum / 2)}
-      />
+      <button onClick={addToDb}>Submit</button>
+      {getItemJsx()}
     </>
   );
 };
